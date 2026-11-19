@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { addItem, deleteItem, spaceName, updateItem, useItems } from '../../lib/actions'
+import { addItem, defaultSpace, deleteItem, spaceName, updateItem, useItems } from '../../lib/actions'
+import { fmtDay } from '../../lib/dates'
 import type { Item } from '../../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, TopBar, useApp } from '../../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, TopBar, useApp, useBusy } from '../../components/ui'
 
 // Aim = a big life direction. Goal = something concrete under an aim.
 // A goal's progress comes from the tasks linked to it (set "Part of a goal" on a task).
@@ -32,7 +33,7 @@ export function Goals({ onBack }: { onBack: () => void }) {
         </span>
         <span className="tiny muted">
           {linked.length ? `${done} of ${linked.length} tasks done` : 'No tasks linked yet'}
-          {g.date ? ` · target ${g.date}` : ''} · {spaceName(settings, g.space)}
+          {g.date ? ` · target ${fmtDay(g.date)}` : ''} · {spaceName(settings, g.space)}
         </span>
       </button>
     )
@@ -97,17 +98,20 @@ function GoalSheet({ edit, aims, onClose }: { edit: { item: Item | null; type: '
   const [body, setBody] = useState(it?.body ?? '')
   const [parentId, setParentId] = useState(it?.parentId ?? edit.parentId ?? '')
   const [date, setDate] = useState(it?.date ?? '')
-  const [space, setSpace] = useState(it?.space ?? (settings.activeSpace !== 'all' ? settings.activeSpace : settings.spaces[0]?.id ?? 'personal'))
+  const [space, setSpace] = useState(() => it?.space ?? defaultSpace(settings))
+  const [busy, run] = useBusy()
   const [done, setDone] = useState(it?.status === 'done')
   const isGoal = edit.type === 'goal'
 
-  async function save() {
-    if (!title.trim()) return onClose()
-    const fields: Partial<Item> = { title: title.trim(), body: body.trim() || undefined, space, parentId: isGoal ? parentId || undefined : undefined, date: date || undefined, status: isGoal ? (done ? 'done' : 'active') : undefined }
-    if (it) await updateItem(it.id, fields)
-    else await addItem(edit.type, fields)
-    onClose()
-  }
+  const save = () =>
+    run(async () => {
+      if (!title.trim()) return onClose()
+      const fields: Partial<Item> = { title: title.trim(), body: body.trim() || undefined, space, parentId: isGoal ? parentId || undefined : undefined, date: isGoal ? date || undefined : undefined, status: isGoal ? (done ? 'done' : 'active') : undefined }
+      if (isGoal) fields.doneAt = done ? (it?.status === 'done' ? it.doneAt ?? it.updatedAt : Date.now()) : undefined
+      if (it) await updateItem(it.id, fields)
+      else await addItem(edit.type, fields)
+      onClose()
+    })
 
   return (
     <Sheet title={it ? (isGoal ? 'Goal' : 'Aim') : isGoal ? 'New goal' : 'New aim'} onClose={onClose}>
@@ -145,7 +149,7 @@ function GoalSheet({ edit, aims, onClose }: { edit: { item: Item | null; type: '
         </button>
       )}
       <div className="row-flex wrap" style={{ gap: 8 }}>
-        <button type="button" className="btn dark" disabled={!title.trim()} onClick={save}>
+        <button type="button" className="btn dark" disabled={!title.trim() || busy} onClick={save}>
           Save
         </button>
         {it && (

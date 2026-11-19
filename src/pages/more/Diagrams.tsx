@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { addItem, deleteItem, updateItem, useItems } from '../../lib/actions'
+import { addItem, defaultSpace, deleteItem, updateItem, useItems } from '../../lib/actions'
 import { fmtAgo } from '../../lib/dates'
 import type { Item } from '../../lib/types'
-import { askConfirm } from '../../components/dialogs'
-import { confirmDelete, Icon, Sheet, TopBar, useApp } from '../../components/ui'
+import { askConfirm, showAlert } from '../../components/dialogs'
+import { confirmDelete, Icon, Sheet, TopBar, useApp, useBusy } from '../../components/ui'
 
 export function Diagrams({ onBack }: { onBack: () => void }) {
   const { toast, settings } = useApp()
@@ -14,9 +14,13 @@ export function Diagrams({ onBack }: { onBack: () => void }) {
   const list = (items ?? []).slice().sort((a, b) => b.updatedAt - a.updatedAt)
 
   async function addPicture(file: File) {
-    const dataUrl = await resizeImage(file, 1600)
-    await addItem('diagram', { kind: 'image', title: file.name.replace(/\.[^.]+$/, ''), image: dataUrl, space: settings.spaces[0]?.id })
-    toast('Picture saved')
+    try {
+      const dataUrl = await resizeImage(file, 1600)
+      await addItem('diagram', { kind: 'image', title: file.name.replace(/\.[^.]+$/, ''), image: dataUrl, space: defaultSpace(settings) })
+      toast('Picture saved')
+    } catch {
+      await showAlert('This picture could not be opened. Try a JPG or PNG photo.')
+    }
   }
 
   if (sketch) return <SketchEditor item={sketch.item} onDone={() => setSketch(null)} />
@@ -35,7 +39,17 @@ export function Diagrams({ onBack }: { onBack: () => void }) {
         <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
           <Icon name="image" size={16} /> Add picture
         </button>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && addPicture(e.target.files[0])} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            e.target.value = ''
+            if (f) addPicture(f)
+          }}
+        />
       </div>
       <div className="grid-2" style={{ gap: 14 }}>
         {list.map((d) => (
@@ -55,11 +69,11 @@ export function Diagrams({ onBack }: { onBack: () => void }) {
           {view.image && <img src={view.image} alt={view.title} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--card-border)', background: '#FFFFFF' }} />}
           <label className="field">
             <span>Title</span>
-            <input className="input" defaultValue={view.title} onBlur={(e) => updateItem(view.id, { title: e.target.value.trim() })} />
+            <input className="input" defaultValue={view.title} onChange={(e) => updateItem(view.id, { title: e.target.value.trim() })} />
           </label>
           <label className="field">
             <span>Notes</span>
-            <textarea className="textarea" rows={3} defaultValue={view.body ?? ''} onBlur={(e) => updateItem(view.id, { body: e.target.value.trim() || undefined })} />
+            <textarea className="textarea" rows={3} defaultValue={view.body ?? ''} onChange={(e) => updateItem(view.id, { body: e.target.value.trim() || undefined })} />
           </label>
           <div className="row-flex wrap" style={{ gap: 8 }}>
             <button
@@ -125,7 +139,7 @@ const PENS = [
 ]
 
 function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void }) {
-  const { toast } = useApp()
+  const { toast, settings } = useApp()
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const bg = useRef<HTMLImageElement | null>(null)
@@ -136,6 +150,7 @@ function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void 
   const [size, setSize] = useState(3)
   const [title, setTitle] = useState(item?.title ?? '')
   const [count, setCount] = useState(0)
+  const [busy, run] = useBusy()
 
   function redraw() {
     const c = canvas.current
@@ -163,6 +178,23 @@ function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void 
       if (st.pts.length === 1) ctx.lineTo(st.pts[0][0] * w + 0.1, st.pts[0][1] * h)
       ctx.stroke()
     }
+  }
+
+  // Draw just one new piece of a line (instead of the whole picture) – keeps drawing smooth.
+  function drawSegment(st: Stroke, a: [number, number], b: [number, number]) {
+    const c = canvas.current
+    if (!c) return
+    const ctx = c.getContext('2d')!
+    const dpr = window.devicePixelRatio || 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.strokeStyle = st.erase ? '#FFFFFF' : st.color
+    ctx.lineWidth = st.width * dpr * (st.erase ? 4 : 1)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(a[0] * c.width, a[1] * c.height)
+    ctx.lineTo(b[0] * c.width, b[1] * c.height)
+    ctx.stroke()
   }
 
   useEffect(() => {
@@ -194,15 +226,16 @@ function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void 
     return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]
   }
 
-  async function save() {
-    const c = canvas.current
-    if (!c) return
-    const image = c.toDataURL('image/png')
-    if (item) await updateItem(item.id, { image, title: title.trim() || item.title, kind: item.kind === 'image' && !strokes.current.length ? 'image' : 'sketch' })
-    else await addItem('diagram', { kind: 'sketch', image, title: title.trim() || 'Sketch' })
-    toast('Sketch saved')
-    onDone()
-  }
+  const save = () =>
+    run(async () => {
+      const c = canvas.current
+      if (!c) return
+      const image = c.toDataURL('image/png')
+      if (item) await updateItem(item.id, { image, title: title.trim() || item.title, kind: item.kind === 'image' && !strokes.current.length ? 'image' : 'sketch' })
+      else await addItem('diagram', { kind: 'sketch', image, title: title.trim() || 'Sketch', space: defaultSpace(settings) })
+      toast('Sketch saved')
+      onDone()
+    })
 
   const color = PENS.find((p) => p.id === pen)!.color
 
@@ -212,7 +245,7 @@ function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void 
         <button type="button" className="btn" style={{ border: 0, paddingLeft: 8, marginLeft: -8 }} onClick={async () => (count && !(await askConfirm('Leave without saving your drawing?', { ok: 'Leave', danger: true })) ? null : onDone())}>
           <Icon name="back" size={18} /> Cancel
         </button>
-        <button type="button" className="btn dark" onClick={save}>
+        <button type="button" className="btn dark" disabled={busy} onClick={save}>
           Save
         </button>
       </div>
@@ -277,14 +310,24 @@ function SketchEditor({ item, onDone }: { item: Item | null; onDone: () => void 
             redraw()
           }}
           onPointerMove={(e) => {
-            if (!current.current) return
-            current.current.pts.push(point(e))
-            redraw()
+            const st = current.current
+            if (!st) return
+            const prev = st.pts[st.pts.length - 1]
+            const next = point(e)
+            st.pts.push(next)
+            drawSegment(st, prev, next)
           }}
           onPointerUp={() => {
             if (current.current) strokes.current.push(current.current)
             current.current = null
             setCount(strokes.current.length)
+          }}
+          onLostPointerCapture={() => {
+            if (current.current) {
+              strokes.current.push(current.current)
+              current.current = null
+              setCount(strokes.current.length)
+            }
           }}
           onPointerCancel={() => {
             current.current = null

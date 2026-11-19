@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { addItem } from '../lib/actions'
+import { addItem, defaultSpace } from '../lib/actions'
 import { todayStr } from '../lib/dates'
 import type { ItemType } from '../lib/types'
-import { AUTO_FOCUS, Sheet, SpaceSelect, useApp, type CaptureDefaults } from './ui'
+import { AUTO_FOCUS, Sheet, SpaceSelect, useApp, useBusy, type CaptureDefaults } from './ui'
 
 const TYPES: { id: ItemType; label: string; target: string }[] = [
   { id: 'inbox', label: 'Inbox', target: 'Inbox' },
@@ -17,12 +17,14 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
   const { settings, toast } = useApp()
   const [text, setText] = useState(defaults.text ?? '')
   const [type, setType] = useState<ItemType>((defaults.type as ItemType) ?? 'inbox')
-  const [space, setSpace] = useState(settings.activeSpace !== 'all' ? settings.activeSpace : settings.spaces[0]?.id ?? 'personal')
+  const [space, setSpace] = useState(() => defaultSpace(settings))
+  const [busy, run] = useBusy()
   const [forToday, setForToday] = useState(true)
   const [author, setAuthor] = useState('')
   const target = TYPES.find((t) => t.id === type)!.target
 
-  async function save() {
+  const save = () => run(doSave)
+  async function doSave() {
     const value = text.trim()
     if (!value) return
     if (type === 'note') {
@@ -43,7 +45,20 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
     <Sheet title="New entry" onClose={onClose}>
       <label className="field">
         <span>Write anything. You can sort it later.</span>
-        <textarea className="textarea" rows={4} autoFocus={AUTO_FOCUS} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Learn DMA on STM32" />
+        <textarea
+          className="textarea"
+          rows={4}
+          autoFocus={AUTO_FOCUS}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault()
+              save()
+            }
+          }}
+          placeholder="e.g. Learn DMA on STM32"
+        />
       </label>
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Save as</span>
@@ -71,7 +86,7 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
         <button type="button" className="btn big" style={{ flex: 1 }} onClick={onClose}>
           Cancel
         </button>
-        <button type="button" className="btn big dark" style={{ flex: 2 }} disabled={!text.trim()} onClick={save}>
+        <button type="button" className="btn big dark" style={{ flex: 2 }} disabled={!text.trim() || busy} onClick={save}>
           Save to {target}
         </button>
       </div>

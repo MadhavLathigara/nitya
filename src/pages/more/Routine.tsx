@@ -3,7 +3,7 @@ import { db, newId } from '../../lib/db'
 import { toggleHabit, useHabitLog, useHabits } from '../../lib/actions'
 import { addDays, todayStr } from '../../lib/dates'
 import type { Habit, HabitLog } from '../../lib/types'
-import { confirmDelete, Icon, TopBar, useApp } from '../../components/ui'
+import { confirmDelete, Icon, TopBar, useApp, useBusy } from '../../components/ui'
 
 function streak(habitId: string, logs: HabitLog[], today: string) {
   const days = new Set(logs.filter((l) => l.habitId === habitId).map((l) => l.date))
@@ -23,6 +23,7 @@ export function Routine({ onBack }: { onBack: () => void }) {
   const [editing, setEditing] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPart, setNewPart] = useState<'morning' | 'evening'>('morning')
+  const [busy, run] = useBusy()
   const today = todayStr()
   const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
   const all = habits ?? []
@@ -63,7 +64,7 @@ export function Routine({ onBack }: { onBack: () => void }) {
                 <div key={h.id} className="list-row">
                   {editing ? (
                     <>
-                      <input className="input grow" aria-label="Habit name" defaultValue={h.name} onBlur={(e) => e.target.value.trim() && db.habits.update(h.id, { name: e.target.value.trim() })} />
+                      <input className="input grow" aria-label="Habit name" defaultValue={h.name} maxLength={40} onChange={(e) => e.target.value.trim() && db.habits.update(h.id, { name: e.target.value.trim() })} />
                       <button
                         type="button"
                         className="icon-btn"
@@ -110,23 +111,26 @@ export function Routine({ onBack }: { onBack: () => void }) {
         <form
           className="card stack"
           style={{ gap: 10 }}
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault()
-            if (!newName.trim()) return
-            const max = all.reduce((m, h) => Math.max(m, h.order), 0)
-            await db.habits.add({ id: newId(), name: newName.trim(), part: newPart, order: max + 1 })
-            setNewName('')
+            const name = newName.trim()
+            if (!name) return
+            run(async () => {
+              const max = all.reduce((m, h) => Math.max(m, h.order), 0)
+              await db.habits.add({ id: newId(), name, part: newPart, order: max + 1 })
+              setNewName('')
+            })
           }}
         >
           <span className="label">Add a habit</span>
-          <input className="input" placeholder="e.g. Drink water" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <input className="input" placeholder="e.g. Drink water" maxLength={40} value={newName} onChange={(e) => setNewName(e.target.value)} />
           <div className="row-flex" style={{ gap: 6 }}>
             {(['morning', 'evening'] as const).map((p) => (
               <button key={p} type="button" aria-pressed={newPart === p} className={'chip small' + (newPart === p ? ' on' : '')} onClick={() => setNewPart(p)}>
                 {p === 'morning' ? 'Morning' : 'Evening'}
               </button>
             ))}
-            <button type="submit" className="btn dark" style={{ marginLeft: 'auto' }} disabled={!newName.trim()}>
+            <button type="submit" className="btn dark" style={{ marginLeft: 'auto' }} disabled={!newName.trim() || busy}>
               Add
             </button>
           </div>

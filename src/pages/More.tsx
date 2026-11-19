@@ -46,7 +46,10 @@ export function More() {
     tasks: String(all.filter((i) => i.type === 'task' && i.status !== 'done').length),
     goals: String(all.filter((i) => i.type === 'goal' && i.status !== 'done').length),
     diagrams: String(all.filter((i) => i.type === 'diagram').length),
-    done: String(all.filter((i) => i.doneAt && todayStr(new Date(i.doneAt)) === today).length) + ' today',
+    done: (() => {
+      const n = all.filter((i) => i.doneAt && todayStr(new Date(i.doneAt)) === today).length
+      return n ? `${n} today` : '0'
+    })(),
   }
 
   return (

@@ -5,7 +5,13 @@ import type { Habit, Item } from './types'
 
 // Example content so the app is not empty on first open.
 // Everything here is marked `sample: true` and can be removed in Settings.
-export async function seedIfNeeded() {
+let seeding: Promise<void> | null = null
+export function seedIfNeeded() {
+  seeding ??= doSeed()
+  return seeding
+}
+
+async function doSeed() {
   const s = await getSettings()
   if (s.seeded) return
   const count = await db.items.count()

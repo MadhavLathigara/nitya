@@ -25,7 +25,7 @@ export function daysBetween(a: string, b: string): number {
 export function parseTime(t?: string): number | null {
   if (!t) return null
   const [h, m] = t.split(':').map(Number)
-  if (Number.isNaN(h)) return null
+  if (Number.isNaN(h) || h < 0 || h > 23) return null
   return h + (m || 0) / 60
 }
 

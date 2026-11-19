@@ -68,15 +68,18 @@ button { cursor: pointer; touch-action: manipulation; }
 }
 
 /* ---------- Side tabs ---------- */
+/* Tabs shrink on short screens (iPhone SE, landscape) so all six fit above the + button. */
 .side-tabs {
-  position: fixed; top: 150px; right: 0; z-index: 20;
+  --tabs-top: calc(min(150px, 18dvh) + var(--safe-top));
+  position: fixed; top: var(--tabs-top); right: 0; z-index: 20;
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
 }
 @media (min-width: 900px) {
   .side-tabs { right: calc(50% - var(--page-w) / 2 - 50px); }
 }
 .side-tab {
-  width: 44px; height: 78px; padding: 0; border: 0;
+  width: 44px; padding: 0; border: 0;
+  height: clamp(48px, calc((100dvh - var(--tabs-top) - var(--safe-bottom) - 130px) / 6), 78px);
   border-radius: 10px 0 0 10px;
   color: #22201C;
   display: flex; align-items: center; justify-content: center;
@@ -100,6 +103,12 @@ button { cursor: pointer; touch-action: manipulation; }
 }
 .fab:active { transform: scale(.94); }
 @media (min-width: 900px) { .fab { right: calc(50% - var(--page-w) / 2 + 24px); bottom: 52px; } }
+/* very short screens (phone on its side): keep + clear of the tabs */
+@media (max-width: 899px) and (max-height: 520px) {
+  .fab { right: 62px; }
+  .side-tabs { --tabs-top: calc(8px + var(--safe-top)); gap: 3px; }
+  .side-tab { height: clamp(36px, calc((100dvh - var(--tabs-top) - var(--safe-bottom) - 24px) / 6), 78px); font-size: 11px; }
+}
 
 /* ---------- Type ---------- */
 .serif { font-family: var(--serif); }
@@ -178,6 +187,8 @@ button { cursor: pointer; touch-action: manipulation; }
   font-size: 16px; line-height: 1.45;
 }
 .textarea { resize: vertical; min-height: 96px; }
+/* date/time boxes must shrink to their column and keep their height when empty (iPhone) */
+.input[type="date"], .input[type="time"] { min-width: 0; min-height: 48px; display: block; }
 .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--accent); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span { font-size: 12px; color: var(--muted); }
@@ -312,6 +323,11 @@ button { cursor: pointer; touch-action: manipulation; }
 .stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .stage-seg { height: 4px; border-radius: 2px; background: var(--line); transition: background-color .45s ease; }
 .stage-seg.on { background: var(--accent); }
+.stage-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* small phones: only the current stage name, so the names never run into each other */
+@media (max-width: 400px) { .stage-name:not(.cur) { visibility: hidden; } .stage-name.cur { overflow: visible; } }
+@media (max-width: 400px) { .ruler .tick.mid { display: none; } }
+.today-date { font-size: clamp(58px, 18vw, 76px); }
 
 /* Memory meter (learning) */
 .memory { width: 44px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; flex: 0 0 44px; }

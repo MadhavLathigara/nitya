@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { addItem, updateItem, useHabitLog, useHabits, useItems } from '../../lib/actions'
 import { addDays, daysBetween, fmtDay, startOfWeek, todayStr } from '../../lib/dates'
-import { TopBar, useApp } from '../../components/ui'
+import { TopBar, useApp, useBusy } from '../../components/ui'
 
 export function Weekly({ onBack }: { onBack: () => void }) {
   const { toast } = useApp()
@@ -15,6 +15,7 @@ export function Weekly({ onBack }: { onBack: () => void }) {
   const [wins, setWins] = useState('')
   const [improve, setImprove] = useState('')
   const [focus, setFocus] = useState('')
+  const [busy, run] = useBusy()
 
   const all = items ?? []
   const inWeek = (ts?: number) => !!ts && todayStr(new Date(ts)) >= start
@@ -27,7 +28,8 @@ export function Weekly({ onBack }: { onBack: () => void }) {
   const habitPct = habitPossible ? Math.round((habitDone / habitPossible) * 100) : 0
   const open = all.filter((i) => i.type === 'task' && i.status === 'todo' && i.date && i.date <= today).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
 
-  async function saveReview() {
+  const saveReview = () => run(doSaveReview)
+  async function doSaveReview() {
     const body = [`# Week of ${fmtDay(start)}`, '', `Tasks done: ${tasksDone} · Habits: ${habitPct}% · Learned: ${learned} · Revised: ${revised}`, '', '## Wins', wins || '-', '', '## What to improve', improve || '-', '', '## Focus for next week', focus || '-'].join('\n')
     await addItem('note', { title: `Week of ${fmtDay(start)}`, body, folder: 'Weekly reviews' })
     setWins('')
@@ -66,12 +68,12 @@ export function Weekly({ onBack }: { onBack: () => void }) {
           <span className="small muted">{open.length}</span>
         </div>
         {open.map((t) => (
-          <div key={t.id} className="list-row" style={{ flexWrap: 'wrap', padding: '8px 0' }}>
-            <span className="grow" style={{ fontSize: 15 }}>
+          <div key={t.id} className="stack" style={{ gap: 8, padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+            <span style={{ fontSize: 15 }}>
               {t.title}
               <span className="tiny muted"> · {fmtDay(t.date!)}</span>
             </span>
-            <div className="row-flex" style={{ gap: 6 }}>
+            <div className="row-flex wrap" style={{ gap: 6 }}>
               <button type="button" className="chip small" onClick={() => updateItem(t.id, { date: nextMonday })}>
                 Next week
               </button>
@@ -103,7 +105,7 @@ export function Weekly({ onBack }: { onBack: () => void }) {
           <span>Main focus for next week</span>
           <textarea className="textarea" rows={2} value={focus} onChange={(e) => setFocus(e.target.value)} />
         </label>
-        <button type="button" className="btn dark" style={{ alignSelf: 'flex-start' }} disabled={!wins && !improve && !focus} onClick={saveReview}>
+        <button type="button" className="btn dark" style={{ alignSelf: 'flex-start' }} disabled={(!wins.trim() && !improve.trim() && !focus.trim()) || busy} onClick={saveReview}>
           Save review
         </button>
       </section>

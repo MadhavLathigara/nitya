@@ -5,7 +5,30 @@ import type { Item } from './types'
 // Google Calendar can import. One way only: Nitya → calendar.
 
 function esc(text: string) {
-  return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+  return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
+}
+
+// Calendar files must not have lines longer than 75 bytes; longer lines are split
+// and the next part starts with a space (RFC 5545). Some calendars reject the file otherwise.
+const enc = new TextEncoder()
+function fold(line: string): string {
+  if (enc.encode(line).length <= 75) return line
+  const parts: string[] = []
+  let cur = ''
+  let bytes = 0
+  for (const ch of line) {
+    const b = enc.encode(ch).length
+    const limit = parts.length ? 74 : 75
+    if (bytes + b > limit) {
+      parts.push(cur)
+      cur = ''
+      bytes = 0
+    }
+    cur += ch
+    bytes += b
+  }
+  parts.push(cur)
+  return parts.join('\r\n ')
 }
 
 function stamp(d: Date) {
@@ -36,8 +59,10 @@ function nextDay(date: string) {
 export function buildICS(items: Item[]): string {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Nitya//Notebook//EN', 'CALSCALE:GREGORIAN']
   const now = stamp(new Date())
-  for (const it of items) {
-    if (!it.date) continue
+  for (const raw of items) {
+    const date = raw.date
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    const it = { ...raw, date, time: raw.time && /^\d{2}:\d{2}$/.test(raw.time) ? raw.time : undefined }
     const start = localDateTime(it.date, it.time)
     const prefix = it.type === 'learn' ? 'Learn: ' : ''
     lines.push('BEGIN:VEVENT', `UID:${it.id}@nitya`, `DTSTAMP:${now}`, `SUMMARY:${esc(prefix + it.title)}`)
@@ -50,7 +75,7 @@ export function buildICS(items: Item[]): string {
     lines.push('END:VEVENT')
   }
   lines.push('END:VCALENDAR')
-  return lines.join('\r\n')
+  return lines.map(fold).join('\r\n') + '\r\n'
 }
 
 export function downloadICS(items: Item[], name = 'nitya-calendar') {

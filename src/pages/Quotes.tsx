@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { addItem, deleteItem, updateItem, useItems } from '../lib/actions'
-import { todayStr } from '../lib/dates'
+import { addItem, defaultSpace, deleteItem, quoteOfDay, updateItem, useItems } from '../lib/actions'
 import type { Item } from '../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, StarButton, TopBar } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, StarButton, TopBar, useApp, useBusy } from '../components/ui'
 
 export function Quotes() {
   const items = useItems('quote')
@@ -19,8 +18,7 @@ export function Quotes() {
     .filter((x) => tag === 'All' || (x.tags ?? []).includes(tag))
     .filter((x) => !query || `${x.title} ${x.author ?? ''} ${x.source ?? ''}`.toLowerCase().includes(query))
 
-  const dayNum = Math.floor(new Date(todayStr()).getTime() / 86400000)
-  const ofDay = all.length ? all[dayNum % all.length] : null
+  const ofDay = quoteOfDay(all)
 
   return (
     <>
@@ -49,7 +47,7 @@ export function Quotes() {
       <label className="row-flex card" style={{ padding: '0 12px', gap: 8 }}>
         <Icon name="search" size={16} />
         <span className="sr-only">Search quotes</span>
-        <input className="grow" placeholder="Search quotes or authors" value={q} onChange={(e) => setQ(e.target.value)} style={{ border: 0, background: 'none', minHeight: 44, fontSize: 15, outline: 'none' }} />
+        <input className="grow" type="search" placeholder="Search quotes or authors" value={q} onChange={(e) => setQ(e.target.value)} style={{ border: 0, background: 'none', minHeight: 44, fontSize: 16, outline: 'none', minWidth: 0 }} />
       </label>
       <div className="row-flex wrap" style={{ gap: 6, marginTop: -8 }}>
         <button type="button" aria-pressed={onlyFav} className={'chip small' + (onlyFav ? ' on' : '')} onClick={() => setOnlyFav(!onlyFav)}>
@@ -96,15 +94,18 @@ function QuoteSheet({ item, onClose }: { item: Item | null; onClose: () => void 
   const [author, setAuthor] = useState(item?.author ?? '')
   const [source, setSource] = useState(item?.source ?? '')
   const [tags, setTags] = useState((item?.tags ?? []).join(', '))
+  const { settings } = useApp()
+  const [busy, run] = useBusy()
 
-  async function save() {
-    const t = text.trim().replace(/^[“"]|[”"]$/g, '')
-    if (!t) return onClose()
-    const fields = { title: t, author: author.trim() || undefined, source: source.trim() || undefined, tags: tags.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean) }
-    if (item) await updateItem(item.id, fields)
-    else await addItem('quote', fields)
-    onClose()
-  }
+  const save = () =>
+    run(async () => {
+      const t = text.trim().replace(/^[“"]+|[”"]+$/g, '').trim()
+      if (!t) return onClose()
+      const fields = { title: t, author: author.trim() || undefined, source: source.trim() || undefined, tags: Array.from(new Set(tags.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean))) }
+      if (item) await updateItem(item.id, fields)
+      else await addItem('quote', { ...fields, space: defaultSpace(settings) })
+      onClose()
+    })
 
   return (
     <Sheet title={item ? 'Edit quote' : 'Add quote'} onClose={onClose}>
@@ -127,7 +128,7 @@ function QuoteSheet({ item, onClose }: { item: Item | null; onClose: () => void 
         <input className="input" placeholder="mindset, work" value={tags} onChange={(e) => setTags(e.target.value)} />
       </label>
       <div className="row-flex wrap" style={{ gap: 8 }}>
-        <button type="button" className="btn dark" disabled={!text.trim()} onClick={save}>
+        <button type="button" className="btn dark" disabled={!text.trim() || busy} onClick={save}>
           Save
         </button>
         {item && (

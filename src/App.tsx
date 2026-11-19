@@ -24,7 +24,10 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function App() {
   const settings = useSettings()
-  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('nitya-tab') as Tab) || 'today')
+  const [tab, setTab] = useState<Tab>(() => {
+    const saved = sessionStorage.getItem('nitya-tab')
+    return TABS.some((t) => t.id === saved) ? (saved as Tab) : 'today'
+  })
   const [sub, setSub] = useState<string | null>(null)
   const [navKey, setNavKey] = useState(0) // bumps on every tab tap, so tapping a tab always opens its main page
   const [capture, setCapture] = useState<CaptureDefaults | null>(null)
@@ -35,7 +38,13 @@ export default function App() {
     seedIfNeeded()
   }, [])
   useEffect(() => {
-    if (settings) applyTheme(settings.theme as ThemeId)
+    if (!settings) return
+    applyTheme(settings.theme as ThemeId)
+    try {
+      localStorage.setItem('nitya-theme', settings.theme)
+    } catch {
+      /* ignore */
+    }
   }, [settings])
   useEffect(() => {
     sessionStorage.setItem('nitya-tab', tab)

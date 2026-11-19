@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { inSpace, saveSettings, spaceName, toggleHabit, toggleTask, updateItem, useHabitLog, useHabits, useItems } from '../lib/actions'
+import { inSpace, quoteOfDay, saveSettings, spaceName, toggleHabit, toggleTask, updateItem, useHabitLog, useHabits, useItems } from '../lib/actions'
 import { fmt24, fmtClock, fmtTime, hoursNow, parseTime, partOfDay, todayStr } from '../lib/dates'
 import { isDue, memoryStrength, onLearned, onRevised } from '../lib/srs'
 import { IDEA_STAGES, type Item } from '../lib/types'
@@ -33,8 +33,17 @@ export function Today() {
   const space = settings.activeSpace
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30000)
-    return () => clearInterval(t)
+    const tick = () => setNow(new Date())
+    const t = setInterval(tick, 30000)
+    // coming back to the app after a while: update the clock and the day straight away
+    const onShow = () => document.visibilityState === 'visible' && tick()
+    document.addEventListener('visibilitychange', onShow)
+    window.addEventListener('focus', tick)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onShow)
+      window.removeEventListener('focus', tick)
+    }
   }, [])
 
   function pulse(key: string) {
@@ -95,9 +104,7 @@ export function Today() {
   const idea = all
     .filter((i) => i.type === 'idea' && i.kind === 'idea' && inSpace(i, space) && ['seed', 'exploring', 'building'].includes(i.status ?? ''))
     .sort((a, b) => b.updatedAt - a.updatedAt)[0]
-  const quotes = all.filter((i) => i.type === 'quote')
-  const dayNum = Math.floor(new Date(today).getTime() / 86400000)
-  const quote = quotes.length ? quotes[dayNum % quotes.length] : null
+  const quote = quoteOfDay(all, today)
 
   const [y, m, d] = today.split('-').map(Number)
   const dateObj = new Date(y, m - 1, d)
@@ -111,8 +118,8 @@ export function Today() {
     <>
       <TopBar />
 
-      <header className="rise" style={{ display: 'flex', alignItems: 'flex-end', gap: 12, animationDelay: '.04s' }}>
-        <span className="serif num" style={{ fontSize: 76, fontWeight: 500, lineHeight: 0.82, letterSpacing: '-0.02em' }}>
+      <header className="rise" style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, rowGap: 10, animationDelay: '.04s' }}>
+        <span className="serif num today-date" style={{ fontWeight: 500, lineHeight: 0.82, letterSpacing: '-0.02em' }}>
           {d}
         </span>
         <div className="stack" style={{ gap: 3, paddingBottom: 3 }}>
@@ -123,7 +130,7 @@ export function Today() {
         </div>
         <div className="stack" style={{ marginLeft: 'auto', alignItems: 'flex-end', gap: 3, paddingBottom: 3 }}>
           <span className="label">{partOfDay(now)}{settings.name ? `, ${settings.name}` : ''}</span>
-          <span className="num" style={{ fontSize: 15, fontWeight: 500 }}>
+          <span className="num" style={{ fontSize: 15, fontWeight: 500, whiteSpace: 'nowrap' }}>
             {fmtClock(now)}
           </span>
         </div>
@@ -134,14 +141,16 @@ export function Today() {
       </div>
 
       <section className="card raised rise stack" style={{ gap: 14, animationDelay: '.12s' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 6 }}>
           <div className="stack" style={{ gap: 4 }}>
             <span className="label">Day progress</span>
             <span className="serif num" style={{ fontSize: 30, fontWeight: 500, lineHeight: 1 }}>
-              {Math.round(frac * 100)}%<span style={{ fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 400, color: 'var(--muted)' }}> of today</span>
+              {Math.round(frac * 100)}%<span style={{ fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 400, color: 'var(--muted)', whiteSpace: 'nowrap' }}> of today</span>
             </span>
           </div>
-          <span className="small muted num">{leftText}</span>
+          <span className="small muted num" style={{ whiteSpace: 'nowrap' }}>
+            {leftText}
+          </span>
         </div>
         <div className="ruler" role="img" aria-label={`Day progress ${Math.round(frac * 100)} percent. ${tasksDone} of ${todayTasks.length} tasks done.`}>
           <span className="track" />
@@ -151,8 +160,8 @@ export function Today() {
           ))}
           <span className="now" style={{ left: `${frac * 100}%` }} />
           <span className="tick" style={{ left: '0%' }}>6 am</span>
-          <span className="tick" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>Noon</span>
-          <span className="tick" style={{ left: '66.67%', transform: 'translateX(-50%)' }}>6 pm</span>
+          <span className="tick mid" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>Noon</span>
+          <span className="tick mid" style={{ left: '66.67%', transform: 'translateX(-50%)' }}>6 pm</span>
           <span className="tick" style={{ left: '100%', transform: 'translateX(-100%)' }}>Midnight</span>
         </div>
         <div className="grid-3" style={{ gap: 8, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
@@ -297,7 +306,7 @@ export function StageBar({ status }: { status?: string }) {
       {IDEA_STAGES.map((s, i) => (
         <div key={s.id} className="stack" style={{ gap: 6 }}>
           <span className={'stage-seg' + (i <= idx ? ' on' : '')} style={{ transitionDelay: `${i * 0.06}s` }} />
-          <span className="tiny" style={{ color: i === idx ? 'var(--ink)' : 'var(--muted)', fontWeight: i === idx ? 600 : 400 }}>
+          <span className={'tiny stage-name' + (i === idx ? ' cur' : '')} style={{ color: i === idx ? 'var(--ink)' : 'var(--muted)', fontWeight: i === idx ? 600 : 400 }}>
             {s.label}
           </span>
         </div>

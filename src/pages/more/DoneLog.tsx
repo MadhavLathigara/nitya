@@ -25,7 +25,7 @@ export function DoneLog({ onBack }: { onBack: () => void }) {
     if (i.type === 'learn' && i.learnedAt) push(i.learnedAt, 'Learned')
     if (i.type === 'learn' && i.lastReviewed && i.lastReviewed !== i.learnedAt) push(i.lastReviewed, 'Revised')
     if (i.type === 'idea' && i.status === 'launched') push(i.stageAt ?? i.updatedAt, 'Idea launched')
-    if (i.type === 'goal' && i.status === 'done') push(i.updatedAt, 'Goal reached')
+    if (i.type === 'goal' && i.status === 'done') push(i.doneAt ?? i.updatedAt, 'Goal reached')
   }
   entries.sort((a, b) => b.at - a.at)
   const days = Array.from(new Set(entries.map((e) => e.day)))

@@ -1,10 +1,28 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Settings } from '../lib/types'
-import { askConfirm } from './dialogs'
+import { askConfirm, dialogOpen } from './dialogs'
 
 // On a phone, opening the keyboard by itself hides half the screen, so we only
 // focus a text box automatically on devices with a mouse (computers).
 export const AUTO_FOCUS = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
+// Stops a double tap from saving the same thing twice: while `run` is busy, more taps are ignored.
+export function useBusy(): [boolean, (fn: () => Promise<unknown> | unknown) => Promise<void>] {
+  const lock = useRef(false)
+  const [busy, setBusy] = useState(false)
+  const run = useCallback(async (fn: () => Promise<unknown> | unknown) => {
+    if (lock.current) return
+    lock.current = true
+    setBusy(true)
+    try {
+      await fn()
+    } finally {
+      lock.current = false
+      setBusy(false)
+    }
+  }, [])
+  return [busy, run]
+}
 
 // ---------- App context ----------
 export type Tab = 'today' | 'learn' | 'ideas' | 'notes' | 'quotes' | 'more'
@@ -150,8 +168,14 @@ export function SpacesBar({ value, onChange }: { value: string; onChange: (id: s
 }
 
 export function Sheet({ title, onClose, children, full, footer }: { title: string; onClose: () => void; children: ReactNode; full?: boolean; footer?: ReactNode }) {
+  const overlay = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || dialogOpen()) return
+      // only the top pop-up closes
+      const all = document.querySelectorAll('.overlay')
+      if (all[all.length - 1] === overlay.current) onClose()
+    }
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -161,7 +185,7 @@ export function Sheet({ title, onClose, children, full, footer }: { title: strin
     }
   }, [onClose])
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className="overlay" ref={overlay} onClick={onClose}>
       <div className={'sheet' + (full ? ' full' : '')} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <span className="grabber" aria-hidden="true" />
         <div className="sheet-head">

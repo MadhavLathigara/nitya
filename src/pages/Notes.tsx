@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { addItem, deleteItem, inSpace, updateItem, useItems } from '../lib/actions'
+import { addItem, defaultSpace, deleteItem, inSpace, updateItem, useItems } from '../lib/actions'
+import { db } from '../lib/db'
 import { fmtAgo } from '../lib/dates'
 import type { Item } from '../lib/types'
 import { askText } from '../components/dialogs'
-import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp } from '../components/ui'
+import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
 
 // Notes work like iPhone Notes: folders, pinned notes, search, checklists.
 // Simple text markers keep notes portable (they export cleanly to Markdown):
@@ -16,11 +17,12 @@ export function Notes() {
   const [folder, setFolder] = useState('All')
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(sub)
+  const [busy, run] = useBusy()
 
   const all = items ?? []
   const open = openId ? all.find((n) => n.id === openId) : null
   const folders = Array.from(new Set(all.map((n) => n.folder || 'Notes'))).sort()
-  if (open) return <NoteEditor note={open} folders={folders} onBack={() => setOpenId(null)} />
+  if (open) return <NoteEditor key={open.id} note={open} folders={folders} onBack={() => setOpenId(null)} />
 
   const query = q.trim().toLowerCase()
   const list = all
@@ -31,28 +33,32 @@ export function Notes() {
   const pinned = list.filter((n) => n.pinned)
   const rest = list.filter((n) => !n.pinned)
 
-  async function newNote() {
-    const id = await addItem('note', { title: '', body: '', folder: folder === 'All' ? 'Notes' : folder, space: space !== 'all' ? space : settings.spaces[0]?.id })
-    setOpenId(id)
+  function newNote() {
+    return run(async () => {
+      const id = await addItem('note', { title: '', body: '', folder: folder === 'All' ? 'Notes' : folder, space: space !== 'all' ? space : defaultSpace(settings) })
+      setOpenId(id)
+    })
   }
 
   return (
     <>
       <TopBar
         right={
-          <button type="button" className="btn dark" onClick={newNote}>
+          <button type="button" className="btn dark" disabled={busy} onClick={newNote}>
             <Icon name="edit" size={16} /> New note
           </button>
         }
       />
       <div className="stack" style={{ gap: 6 }}>
         <h1 className="h1">Notes</h1>
-        <span className="small muted">{list.length} notes</span>
+        <span className="small muted">
+          {list.length} {list.length === 1 ? 'note' : 'notes'}
+        </span>
       </div>
       <label className="row-flex card" style={{ padding: '0 12px', gap: 8 }}>
         <Icon name="search" size={16} />
         <span className="sr-only">Search notes</span>
-        <input className="grow" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} style={{ border: 0, background: 'none', minHeight: 44, fontSize: 15, outline: 'none' }} />
+        <input className="grow" type="search" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} style={{ border: 0, background: 'none', minHeight: 44, fontSize: 16, outline: 'none', minWidth: 0 }} />
       </label>
       <SpacesBar value={space} onChange={setSpace} />
       {folders.length > 1 && (
@@ -116,12 +122,16 @@ function NoteRow({ note, onOpen }: { note: Item; onOpen: () => void }) {
   )
 }
 
+const editorsOpen = new Map<string, number>()
+
 function NoteEditor({ note, folders, onBack }: { note: Item; folders: string[]; onBack: () => void }) {
   const { toast } = useApp()
   const [body, setBody] = useState(note.body ?? '')
   const [mode, setMode] = useState<'edit' | 'read'>(note.body ? 'read' : 'edit')
   const ta = useRef<HTMLTextAreaElement>(null)
   const timer = useRef<number | undefined>(undefined)
+  const latest = useRef(body)
+  latest.current = body
 
   function persist(text: string) {
     const first = text.split('\n').find((l) => l.trim()) ?? ''
@@ -131,15 +141,41 @@ function NoteEditor({ note, folders, onBack }: { note: Item; folders: string[]; 
   function onChange(text: string) {
     setBody(text)
     window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => persist(text), 400)
+    timer.current = window.setTimeout(() => {
+      timer.current = undefined
+      persist(text)
+    }, 400)
   }
-  useEffect(() => () => window.clearTimeout(timer.current), [])
+  // Never lose the last words: save right away if you switch tab, leave the app or close it.
+  useEffect(() => {
+    const flush = () => {
+      if (timer.current === undefined) return
+      window.clearTimeout(timer.current)
+      timer.current = undefined
+      persist(latest.current)
+    }
+    editorsOpen.set(note.id, (editorsOpen.get(note.id) ?? 0) + 1)
+    const onHide = () => document.visibilityState === 'hidden' && flush()
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', flush)
+      flush()
+      // a note left completely empty is removed (same as iPhone Notes)
+      editorsOpen.set(note.id, (editorsOpen.get(note.id) ?? 1) - 1)
+      setTimeout(() => {
+        if (editorsOpen.get(note.id)) return // opened again straight away (React dev mode does this)
+        db.items.get(note.id).then((n) => {
+          if (n && !(n.body ?? '').trim()) deleteItem(note.id)
+        })
+      }, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  async function back() {
-    window.clearTimeout(timer.current)
-    if (!body.trim()) await deleteItem(note.id)
-    else persist(body)
-    onBack()
+  function back() {
+    onBack() // saving and removing an empty note happen when the editor closes (see above)
   }
 
   // Insert a marker at the start of the current line

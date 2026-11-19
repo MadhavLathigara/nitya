@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { addItem, deleteItem, inSpace, spaceName, updateItem, useItems } from '../lib/actions'
+import { addItem, defaultSpace, deleteItem, descendants, inSpace, spaceName, updateItem, useItems } from '../lib/actions'
+import { db } from '../lib/db'
 import { fmtAgo } from '../lib/dates'
 import { IDEA_STAGES, type Item } from '../lib/types'
-import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp } from '../components/ui'
+import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
 import { StageBar } from './Today'
 
 type Filter = 'active' | 'launched' | 'parked'
+const NEW_IDEA = 'New idea'
 
 export function Ideas() {
   const { settings, sub } = useApp()
@@ -13,10 +15,11 @@ export function Ideas() {
   const [space, setSpace] = useState(settings.activeSpace)
   const [filter, setFilter] = useState<Filter>('active')
   const [openId, setOpenId] = useState<string | null>(sub)
+  const [busy, run] = useBusy()
 
   const all = items ?? []
   const open = openId ? all.find((i) => i.id === openId) : null
-  if (open) return <IdeaDetail idea={open} all={all} onBack={() => setOpenId(null)} />
+  if (open) return <IdeaDetail key={open.id} idea={open} all={all} onBack={() => setOpenId(null)} />
 
   const ideas = all
     .filter((i) => i.kind === 'idea' && inSpace(i, space))
@@ -30,10 +33,13 @@ export function Ideas() {
           <button
             type="button"
             className="btn dark"
-            onClick={async () => {
-              const id = await addItem('idea', { title: 'New idea', kind: 'idea', status: 'seed', space: settings.activeSpace !== 'all' ? settings.activeSpace : settings.spaces[0]?.id })
-              setOpenId(id)
-            }}
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const id = await addItem('idea', { title: NEW_IDEA, kind: 'idea', status: 'seed', space: defaultSpace(settings) })
+                setOpenId(id)
+              })
+            }
           >
             <Icon name="plus" size={16} /> New idea
           </button>
@@ -85,17 +91,26 @@ function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: ()
   const { toast } = useApp()
   const features = all.filter((x) => x.parentId === idea.id).sort((a, b) => a.createdAt - b.createdAt)
   const [newFeature, setNewFeature] = useState('')
+  const [busy, run] = useBusy()
+
+  // Leaving an idea you just made and never touched removes it, so no empty "New idea" cards pile up.
+  async function back() {
+    const fresh = await db.items.get(idea.id)
+    if (fresh && fresh.title === NEW_IDEA && !fresh.body && !features.length && fresh.createdAt === fresh.updatedAt) await deleteItem(idea.id)
+    onBack()
+  }
 
   return (
     <>
-      <TopBar title="Ideas" onBack={onBack} />
+      <TopBar title="Ideas" onBack={back} />
       <div className="row-flex" style={{ alignItems: 'flex-start' }}>
         <textarea
           className="h1 grow"
           aria-label="Idea title"
           defaultValue={idea.title}
           rows={1}
-          onBlur={(e) => e.target.value.trim() && updateItem(idea.id, { title: e.target.value.trim() })}
+          onFocus={(e) => idea.title === NEW_IDEA && e.target.select()}
+          onChange={(e) => e.target.value.trim() && updateItem(idea.id, { title: e.target.value.trim() })}
           style={{ border: 0, background: 'none', padding: 0, resize: 'none', fieldSizing: 'content' } as React.CSSProperties}
         />
         <StarButton on={!!idea.starred} label={idea.title} onToggle={() => updateItem(idea.id, { starred: !idea.starred })} />
@@ -116,10 +131,17 @@ function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: ()
         </div>
       </section>
 
-      <SpaceSelect value={idea.space} onChange={(v) => updateItem(idea.id, { space: v })} />
+      <SpaceSelect
+        value={idea.space}
+        onChange={async (v) => {
+          // the idea's features and options move with it
+          const ids = [idea.id, ...descendants(all, idea.id)]
+          await db.items.where('id').anyOf(ids).modify({ space: v, updatedAt: Date.now() })
+        }}
+      />
       <label className="field">
         <span>Description</span>
-        <textarea className="textarea" rows={3} defaultValue={idea.body ?? ''} onBlur={(e) => updateItem(idea.id, { body: e.target.value.trim() || undefined })} placeholder="What is it? Who is it for? Why now?" />
+        <textarea className="textarea" rows={3} defaultValue={idea.body ?? ''} onChange={(e) => updateItem(idea.id, { body: e.target.value.trim() || undefined })} placeholder="What is it? Who is it for? Why now?" />
       </label>
 
       <section className="stack" style={{ gap: 4 }}>
@@ -133,15 +155,18 @@ function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: ()
         <form
           className="row-flex"
           style={{ marginTop: 8 }}
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault()
-            if (!newFeature.trim()) return
-            await addItem('idea', { kind: 'feature', title: newFeature.trim(), parentId: idea.id, space: idea.space })
-            setNewFeature('')
+            const t = newFeature.trim()
+            if (!t) return
+            run(async () => {
+              await addItem('idea', { kind: 'feature', title: t, parentId: idea.id, space: idea.space })
+              setNewFeature('')
+            })
           }}
         >
           <input className="input grow" placeholder="Add a feature" value={newFeature} onChange={(e) => setNewFeature(e.target.value)} />
-          <button type="submit" className="btn" disabled={!newFeature.trim()}>
+          <button type="submit" className="btn" disabled={!newFeature.trim() || busy}>
             Add
           </button>
         </form>
@@ -167,10 +192,11 @@ function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: ()
 function FeatureBlock({ feature, options }: { feature: Item; options: Item[] }) {
   const [newOption, setNewOption] = useState('')
   const [adding, setAdding] = useState(false)
+  const [busy, run] = useBusy()
   return (
     <div className="stack" style={{ borderBottom: '1px solid var(--line)', padding: '10px 0' }}>
       <div className="row-flex">
-        <input className="grow serif" aria-label="Feature" defaultValue={feature.title} onBlur={(e) => e.target.value.trim() && updateItem(feature.id, { title: e.target.value.trim() })} style={{ fontSize: 17, border: 0, background: 'none', padding: '6px 0' }} />
+        <input className="grow serif" aria-label="Feature" defaultValue={feature.title} onChange={(e) => e.target.value.trim() && updateItem(feature.id, { title: e.target.value.trim() })} style={{ fontSize: 17, border: 0, background: 'none', padding: '6px 0' }} />
         <button type="button" className="icon-btn plain" aria-label="Add option" onClick={() => setAdding(true)}>
           <Icon name="plus" size={16} />
         </button>
@@ -183,7 +209,7 @@ function FeatureBlock({ feature, options }: { feature: Item; options: Item[] }) 
           <span className="tiny muted" aria-hidden="true">
             Option
           </span>
-          <input className="grow" aria-label="Option" defaultValue={o.title} onBlur={(e) => e.target.value.trim() && updateItem(o.id, { title: e.target.value.trim() })} style={{ fontSize: 14, border: 0, background: 'none', padding: '8px 0' }} />
+          <input className="grow" aria-label="Option" defaultValue={o.title} onChange={(e) => e.target.value.trim() && updateItem(o.id, { title: e.target.value.trim() })} style={{ fontSize: 16, border: 0, background: 'none', padding: '8px 0' }} />
           <button type="button" className="icon-btn plain" aria-label={`Delete option ${o.title}`} onClick={() => deleteItem(o.id)}>
             <Icon name="close" size={14} />
           </button>
@@ -193,15 +219,18 @@ function FeatureBlock({ feature, options }: { feature: Item; options: Item[] }) 
         <form
           className="row-flex"
           style={{ paddingLeft: 16, marginTop: 4 }}
-          onSubmit={async (e) => {
+          onSubmit={(e) => {
             e.preventDefault()
-            if (!newOption.trim()) return
-            await addItem('idea', { kind: 'option', title: newOption.trim(), parentId: feature.id, space: feature.space })
-            setNewOption('')
+            const t = newOption.trim()
+            if (!t) return
+            run(async () => {
+              await addItem('idea', { kind: 'option', title: t, parentId: feature.id, space: feature.space })
+              setNewOption('')
+            })
           }}
         >
           <input className="input grow" autoFocus placeholder="Add an option" value={newOption} onChange={(e) => setNewOption(e.target.value)} />
-          <button type="submit" className="btn" disabled={!newOption.trim()}>
+          <button type="submit" className="btn" disabled={!newOption.trim() || busy}>
             Add
           </button>
         </form>

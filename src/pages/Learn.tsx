@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react'
-import { addItem, deleteItem, inSpace, updateItem, useItems } from '../lib/actions'
+import { useRef, useState, type ReactNode } from 'react'
+import { addItem, defaultSpace, deleteItem, descendants, inSpace, updateItem, useItems } from '../lib/actions'
 import { downloadICS } from '../lib/calendar'
 import { fmtDay, todayStr } from '../lib/dates'
 import { isDue, memoryStrength, onLearned, onRevised } from '../lib/srs'
 import { LEARN_KINDS, type Item, type LearnKind } from '../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, SpacesBar, StarButton, TopBar, useApp } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
 
 type Filter = 'all' | 'today' | 'revise' | 'important'
 const FILTERS: { id: Filter; label: string }[] = [
@@ -131,22 +131,30 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
   const [title, setTitle] = useState(item?.title ?? '')
   const [kind, setKind] = useState<LearnKind>((item?.kind as LearnKind) ?? 'topic')
   const [parentId, setParentId] = useState(item?.parentId ?? '')
-  const [space, setSpace] = useState(item?.space ?? (settings.activeSpace !== 'all' ? settings.activeSpace : settings.spaces[0]?.id ?? 'personal'))
+  const [space, setSpace] = useState(() => item?.space ?? defaultSpace(settings))
+  const [, run] = useBusy()
+  const closed = useRef(false)
   const [body, setBody] = useState(item?.body ?? '')
   const [date, setDate] = useState(item?.date ?? '')
   const [time, setTime] = useState(item?.time ?? '')
   const [minutes, setMinutes] = useState(item?.minutes ? String(item.minutes) : '')
   const [status, setStatus] = useState(item?.status ?? 'tolearn')
   const [starred, setStarred] = useState(!!item?.starred)
-  const parents = all.filter((i) => (i.kind === 'field' || i.kind === 'subject') && i.id !== item?.id)
+  // A topic can't be put inside itself or inside one of its own children (that would hide both).
+  const inside = item ? descendants(all, item.id) : new Set<string>()
+  const parents = all.filter((i) => (i.kind === 'field' || i.kind === 'subject') && i.id !== item?.id && !inside.has(i.id))
   const today = todayStr()
 
-  async function save() {
+  const save = () => run(doSave)
+  async function doSave() {
+    if (closed.current) return
     const t = title.trim()
     if (!t) {
+      closed.current = true
       onClose()
       return
     }
+    const mins = Math.round(Number(minutes))
     const fields: Partial<Item> = {
       title: t,
       kind,
@@ -155,12 +163,13 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
       body: body.trim() || undefined,
       date: date || undefined,
       time: time || undefined,
-      minutes: minutes ? Number(minutes) : undefined,
+      minutes: mins > 0 ? Math.min(mins, 1440) : undefined,
       status,
       starred,
     }
     if (status === 'learned' && item?.status !== 'learned') Object.assign(fields, onLearned())
     if (status !== 'learned' && item?.status === 'learned') Object.assign(fields, { learnedAt: undefined, nextReview: undefined, reviewStep: undefined, lastReviewed: undefined })
+    closed.current = true
     if (item) await updateItem(item.id, fields)
     else await addItem('learn', fields)
     onClose()
@@ -211,14 +220,14 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
             onClick={async () => {
               await updateItem(item.id, onRevised(item))
               toast('Revised. Next review is set.')
-              onClose()
+              save()
             }}
           >
             Revise now
           </button>
         </div>
       )}
-      <div className="grid-3">
+      <div className="grid-2">
         <label className="field">
           <span>Plan for day</span>
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -227,12 +236,14 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
           <span>Time</span>
           <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
+      </div>
+      <div className="grid-2">
         <label className="field">
           <span>Minutes</span>
-          <input className="input" type="number" min={1} inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          <input className="input" type="number" min={1} max={1440} inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
         </label>
+        <SpaceSelect value={space} onChange={setSpace} />
       </div>
-      <SpaceSelect value={space} onChange={setSpace} />
       <label className="field">
         <span>Notes</span>
         <textarea className="textarea" rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Key points, links, datasheet pages…" />
@@ -253,6 +264,7 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
             onClick={async () => {
               const kids = all.filter((i) => i.parentId === item.id).length
               if (!(await confirmDelete(kids ? `"${item.title}" and the ${kids} items inside it` : `"${item.title}"`))) return
+              closed.current = true
               await deleteItem(item.id)
               onClose()
             }}

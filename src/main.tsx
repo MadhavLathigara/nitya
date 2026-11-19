@@ -9,6 +9,7 @@ import '@fontsource/newsreader/600.css'
 import '@fontsource/newsreader/400-italic.css'
 import './styles.css'
 import App from './App.tsx'
+import { applyTheme, normalizeTheme } from './lib/themes'
 
 // iPhone keyboard fix: Safari does not shrink the page when the keyboard opens,
 // so bottom sheets end up behind it. We track the *visible* area and size pop-ups to it.
@@ -25,6 +26,13 @@ function trackVisibleArea() {
   vv.addEventListener('scroll', update)
 }
 trackVisibleArea()
+
+// Show the saved colour template straight away (no flash of the light theme when you use Black).
+try {
+  applyTheme(normalizeTheme(localStorage.getItem('nitya-theme') ?? 'paper'))
+} catch {
+  /* ignore */
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
