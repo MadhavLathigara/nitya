@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { addItem, deleteItem, spaceName, updateItem, useItems } from '../../lib/actions'
 import type { Item } from '../../lib/types'
-import { confirmDelete, Icon, Sheet, SpaceSelect, TopBar, useApp } from '../../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, TopBar, useApp } from '../../components/ui'
 
 // Aim = a big life direction. Goal = something concrete under an aim.
 // A goal's progress comes from the tasks linked to it (set "Part of a goal" on a task).
@@ -113,7 +113,7 @@ function GoalSheet({ edit, aims, onClose }: { edit: { item: Item | null; type: '
     <Sheet title={it ? (isGoal ? 'Goal' : 'Aim') : isGoal ? 'New goal' : 'New aim'} onClose={onClose}>
       <label className="field">
         <span>{isGoal ? 'Goal (concrete, can be finished)' : 'Aim (a big direction for years)'}</span>
-        <input className="input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 17 }} />
+        <input className="input" autoFocus={AUTO_FOCUS} value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 17 }} />
       </label>
       {isGoal && (
         <div className="grid-2">

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { addItem } from '../lib/actions'
 import { todayStr } from '../lib/dates'
 import type { ItemType } from '../lib/types'
-import { Sheet, SpaceSelect, useApp, type CaptureDefaults } from './ui'
+import { AUTO_FOCUS, Sheet, SpaceSelect, useApp, type CaptureDefaults } from './ui'
 
 const TYPES: { id: ItemType; label: string; target: string }[] = [
   { id: 'inbox', label: 'Inbox', target: 'Inbox' },
@@ -43,7 +43,7 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
     <Sheet title="New entry" onClose={onClose}>
       <label className="field">
         <span>Write anything. You can sort it later.</span>
-        <textarea className="textarea" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Learn DMA on STM32" />
+        <textarea className="textarea" rows={4} autoFocus={AUTO_FOCUS} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Learn DMA on STM32" />
       </label>
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Save as</span>

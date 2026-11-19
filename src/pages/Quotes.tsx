@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { addItem, deleteItem, updateItem, useItems } from '../lib/actions'
 import { todayStr } from '../lib/dates'
 import type { Item } from '../lib/types'
-import { confirmDelete, Icon, Sheet, StarButton, TopBar } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, StarButton, TopBar } from '../components/ui'
 
 export function Quotes() {
   const items = useItems('quote')
@@ -110,7 +110,7 @@ function QuoteSheet({ item, onClose }: { item: Item | null; onClose: () => void 
     <Sheet title={item ? 'Edit quote' : 'Add quote'} onClose={onClose}>
       <label className="field">
         <span>Quote</span>
-        <textarea className="textarea serif" rows={3} autoFocus value={text} onChange={(e) => setText(e.target.value)} style={{ fontStyle: 'italic', fontSize: 18 }} />
+        <textarea className="textarea serif" rows={3} autoFocus={AUTO_FOCUS} value={text} onChange={(e) => setText(e.target.value)} style={{ fontStyle: 'italic', fontSize: 18 }} />
       </label>
       <div className="grid-2">
         <label className="field">

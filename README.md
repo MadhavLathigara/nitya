@@ -87,7 +87,7 @@
 
 ### 🎨 Look & feel
 - A calm paper-notebook design with notebook tabs on the side.
-- 6 colour templates: **Paper** (default), **White**, **Stone**, **Sand**, **Graphite** (dark) and **Midnight** (dark).
+- 6 colour templates: **Paper** (default), **White**, **Stone**, **Sand**, **Graphite** (dark) and **Black** (pure black, great for OLED iPhone screens).
 - Small, calm animations: ticks that draw themselves, a line through finished tasks, a filling progress bar, faded topics that come back when revised.
 
 ### 💾 Backup, export & calendar
@@ -123,7 +123,7 @@
 <table>
   <tr>
     <td align="center"><img src="screenshots/12-dark-mode.png" width="200"><br><sub>Graphite (dark)</sub></td>
-    <td align="center"><img src="screenshots/theme-midnight.png" width="200"><br><sub>Midnight (dark)</sub></td>
+    <td align="center"><img src="screenshots/theme-black.png" width="200"><br><sub>Black</sub></td>
     <td align="center"><img src="screenshots/theme-white.png" width="200"><br><sub>White</sub></td>
   </tr>
   <tr>

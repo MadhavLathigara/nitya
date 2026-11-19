@@ -1,7 +1,7 @@
 // Colour templates. Each one sets the same CSS variables, so every screen
 // follows the chosen template. Add a new template here and it shows up in Settings.
 
-export type ThemeId = 'paper' | 'white' | 'stone' | 'sand' | 'graphite' | 'midnight'
+export type ThemeId = 'paper' | 'white' | 'stone' | 'sand' | 'graphite' | 'black'
 
 export interface Theme {
   name: string
@@ -23,11 +23,17 @@ export const THEMES: Record<ThemeId, Theme> = {
   stone: { name: 'Stone', dark: false, paper: '#EDECE9', ink: '#1D1E20', muted: '#5D5F64', line: '#DAD9D5', card: '#F8F8F6', cardBorder: '#DCDBD6', accent: '#2F5D50', margin: 'rgba(47, 93, 80, 0.35)', shadow: 'rgba(0, 0, 0, 0.05)' },
   sand: { name: 'Sand', dark: false, paper: '#F1E9DC', ink: '#241E16', muted: '#635647', line: '#DFD3BF', card: '#FBF7F0', cardBorder: '#E0D4C0', accent: '#9A4E2A', margin: 'rgba(154, 78, 42, 0.35)', shadow: 'rgba(60, 40, 10, 0.06)' },
   graphite: { name: 'Graphite', dark: true, paper: '#161616', ink: '#EDEBE7', muted: '#A29E96', line: '#2A2A2A', card: '#1E1E1E', cardBorder: '#2D2D2D', accent: '#E0B36A', margin: 'rgba(224, 179, 106, 0.35)', shadow: 'rgba(0, 0, 0, 0.35)' },
-  midnight: { name: 'Midnight', dark: true, paper: '#10141C', ink: '#E9ECF2', muted: '#9CA5B6', line: '#222A38', card: '#161C27', cardBorder: '#252F41', accent: '#8FB3FF', margin: 'rgba(143, 179, 255, 0.35)', shadow: 'rgba(0, 0, 0, 0.35)' },
+  black: { name: 'Black', dark: true, paper: '#000000', ink: '#F2F2F2', muted: '#A3A3A3', line: '#242424', card: '#0E0E0E', cardBorder: '#262626', accent: '#F0675C', margin: 'rgba(240, 103, 92, 0.4)', shadow: 'rgba(0, 0, 0, 0.5)' },
+}
+
+// "midnight" was replaced by "black" on 20 Nov 2026 – old settings move over.
+export function normalizeTheme(id: string): ThemeId {
+  if (id === 'midnight') return 'black'
+  return (id in THEMES ? id : 'paper') as ThemeId
 }
 
 export function applyTheme(id: ThemeId) {
-  const t = THEMES[id] ?? THEMES.paper
+  const t = THEMES[normalizeTheme(id)]
   const root = document.documentElement
   root.style.setProperty('--paper', t.paper)
   root.style.setProperty('--ink', t.ink)

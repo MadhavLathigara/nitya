@@ -1,12 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId } from './db'
 import { todayStr } from './dates'
+import { normalizeTheme } from './themes'
 import { DEFAULT_SETTINGS, type Item, type ItemType, type Settings } from './types'
 
 // ---------- Settings ----------
 export async function getSettings(): Promise<Settings> {
   const row = await db.kv.get('settings')
-  return { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) }
+  const s = { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) }
+  return { ...s, theme: normalizeTheme(s.theme) }
 }
 
 export async function saveSettings(patch: Partial<Settings>) {

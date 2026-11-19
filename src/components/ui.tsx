@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react'
 import type { Settings } from '../lib/types'
 import { askConfirm } from './dialogs'
 
+// On a phone, opening the keyboard by itself hides half the screen, so we only
+// focus a text box automatically on devices with a mouse (computers).
+export const AUTO_FOCUS = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
 // ---------- App context ----------
 export type Tab = 'today' | 'learn' | 'ideas' | 'notes' | 'quotes' | 'more'
 export interface CaptureDefaults { type?: string; text?: string; date?: string }

@@ -4,7 +4,7 @@ import { downloadICS } from '../lib/calendar'
 import { fmtDay, todayStr } from '../lib/dates'
 import { isDue, memoryStrength, onLearned, onRevised } from '../lib/srs'
 import { LEARN_KINDS, type Item, type LearnKind } from '../lib/types'
-import { confirmDelete, Icon, Sheet, SpaceSelect, SpacesBar, StarButton, TopBar, useApp } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, SpacesBar, StarButton, TopBar, useApp } from '../components/ui'
 
 type Filter = 'all' | 'today' | 'revise' | 'important'
 const FILTERS: { id: Filter; label: string }[] = [
@@ -169,7 +169,7 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
   return (
     <Sheet title={item ? kindLabel(kind) : 'Add to Learn'} onClose={() => save()}>
       <div className="row-flex">
-        <input className="input grow" aria-label="Title" placeholder="e.g. Timer interrupts on STM32" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 17 }} autoFocus={!item} />
+        <input className="input grow" aria-label="Title" placeholder="e.g. Timer interrupts on STM32" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 17 }} autoFocus={!item && AUTO_FOCUS} />
         <StarButton on={starred} onToggle={() => setStarred(!starred)} label={title || 'item'} />
       </div>
       <div className="row-flex wrap" style={{ gap: 6 }}>

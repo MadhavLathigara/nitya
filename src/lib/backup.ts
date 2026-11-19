@@ -1,4 +1,5 @@
 import { db } from './db'
+import { saveFile } from './files'
 import { todayStr } from './dates'
 import type { Habit, HabitLog, Item } from './types'
 
@@ -13,19 +14,7 @@ interface BackupFile {
   kv: { key: string; value: unknown }[]
 }
 
-function download(name: string, text: string, mime: string) {
-  const blob = new Blob([text], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 2000)
-}
-
-export async function exportJSON() {
+export async function exportJSON(): Promise<boolean> {
   const data: BackupFile = {
     app: 'nitya',
     version: 1,
@@ -35,8 +24,10 @@ export async function exportJSON() {
     habitLog: await db.habitLog.toArray(),
     kv: await db.kv.toArray(),
   }
-  download(`nitya-backup-${todayStr()}.json`, JSON.stringify(data, null, 2), 'application/json')
+  const r = await saveFile(`nitya-backup-${todayStr()}.json`, JSON.stringify(data, null, 2), 'application/json')
+  if (r === 'cancelled') return false
   localStorage.setItem('nitya-last-backup', new Date().toISOString())
+  return true
 }
 
 export async function exportMarkdown() {
@@ -57,7 +48,7 @@ export async function exportMarkdown() {
   for (const n of by('note')) {
     lines.push(`## Note: ${n.title || 'Untitled'}`, '', n.body ?? '', '')
   }
-  download(`nitya-export-${todayStr()}.md`, lines.join('\n'), 'text/markdown')
+  await saveFile(`nitya-export-${todayStr()}.md`, lines.join('\n'), 'text/markdown')
 }
 
 export async function importJSON(file: File, mode: 'merge' | 'replace') {

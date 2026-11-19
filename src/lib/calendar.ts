@@ -1,3 +1,4 @@
+import { saveFile } from './files'
 import type { Item } from './types'
 
 // Makes a standard calendar file (.ics) that iPhone Calendar, Outlook and
@@ -53,13 +54,5 @@ export function buildICS(items: Item[]): string {
 }
 
 export function downloadICS(items: Item[], name = 'nitya-calendar') {
-  const blob = new Blob([buildICS(items)], { type: 'text/calendar' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${name}.ics`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 2000)
+  return saveFile(`${name}.ics`, buildICS(items), 'text/calendar')
 }

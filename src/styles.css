@@ -31,7 +31,7 @@ body {
   transition: background-color .5s ease, color .5s ease;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -217,22 +217,24 @@ button { cursor: pointer; }
 
 /* ---------- Sheets / dialogs ---------- */
 .overlay {
-  position: fixed; inset: 0; z-index: 50; background: rgba(15, 14, 12, 0.38);
+  position: fixed; left: 0; right: 0; z-index: 50; background: rgba(15, 14, 12, 0.38);
+  /* follow the visible area, so the iPhone keyboard never covers a pop-up */
+  top: var(--vv-top, 0px); height: var(--vv-h, 100dvh);
   display: flex; align-items: flex-end; justify-content: center;
   animation: fadein .2s ease both;
 }
 .sheet {
-  width: 100%; max-width: 640px; max-height: 92dvh; overflow-y: auto;
+  width: 100%; max-width: 640px; max-height: calc(var(--vv-h, 100dvh) - 12px); overflow-y: auto; overscroll-behavior: contain;
   background: var(--paper); color: var(--ink);
   border-radius: 22px 22px 0 0;
   padding: 12px 20px calc(24px + var(--safe-bottom));
   display: flex; flex-direction: column; gap: 14px;
   animation: slideup .35s cubic-bezier(.2,.8,.2,1) both;
 }
-.sheet.full { height: 96dvh; max-height: 96dvh; }
+.sheet.full { height: calc(var(--vv-h, 100dvh) - 12px); }
 @media (min-width: 900px) {
   .overlay { align-items: center; }
-  .sheet { border-radius: 18px; padding-bottom: 24px; max-height: 86dvh; }
+  .sheet { border-radius: 18px; padding-bottom: 24px; max-height: min(86dvh, calc(var(--vv-h, 100dvh) - 40px)); }
   .sheet.full { height: 86dvh; }
 }
 .grabber { align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); flex: 0 0 4px; }

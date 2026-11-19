@@ -167,7 +167,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           {backupAt ? ` Last backup: ${new Date(backupAt).toLocaleString()}.` : ' No backup made yet.'}
         </p>
         <div className="row-flex wrap" style={{ gap: 8 }}>
-          <button type="button" className="btn dark" onClick={() => exportJSON().then(() => toast('Backup file saved'))}>
+          <button type="button" className="btn dark" onClick={() => exportJSON().then((ok) => ok && toast('Backup file saved'))}>
             <Icon name="download" size={16} /> Back up now
           </button>
           <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
