@@ -1,7 +1,8 @@
-# Builds the app and publishes it to GitHub Pages on every push to "main".
-# Based on the official Vite guide (vite.dev/guide/static-deploy), checked 19 Nov 2026.
-# Actions are pinned to exact commits for safety; the comment shows the version.
-name: Deploy to GitHub Pages
+# Builds the app and puts the finished files on the "gh-pages" branch.
+# GitHub Pages then shows that branch (Settings → Pages → Deploy from a branch → gh-pages / root).
+# Runs on every push to "main", or by hand from the Actions tab.
+# Checkout and Node actions are pinned to exact commits for safety (comment shows the version).
+name: Build and publish to gh-pages
 
 on:
   push:
@@ -9,19 +10,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,12 +31,15 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      - name: Setup Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with:
-          path: './dist'
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+      - name: Publish to gh-pages branch
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name "Madhav Lathigara"
+          git config user.email "lathigara.madhav@gmail.com"
+          git add -A
+          git commit -q -m "Publish ${GITHUB_SHA::7}"
+          git push -f -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

@@ -237,7 +237,7 @@ The app runs in any modern browser. On Android, open the link in Chrome and use 
 
 ```
 nitya/
-├── .github/workflows/deploy.yml   # builds and publishes the app to GitHub Pages on every push
+├── .github/workflows/deploy.yml   # builds the app and puts it on the gh-pages branch on every push
 ├── public/                        # app icons
 ├── screenshots/                   # images used in this README
 ├── src/
@@ -268,9 +268,11 @@ Then open the address it prints (usually http://localhost:5173).
 
 ### Make your own copy
 1. Click **Fork** at the top of this page.
-2. In your copy, open **Settings → Pages → Build and deployment** and set **Source** to **GitHub Actions**.
-3. Open the **Actions** tab and run **Deploy to GitHub Pages** (or push any change).
+2. In your copy, open the **Actions** tab, enable workflows if asked, and run **Build and publish to gh-pages**. When it shows ✓, a `gh-pages` branch appears.
+3. Open **Settings → Pages**. Choose **Deploy from a branch**, then **gh-pages** and **/ (root)**, then **Save**.
 4. After 1–2 minutes, your own link appears: `https://<your-username>.github.io/nitya/`
+
+> The `main` branch has the source code. The `gh-pages` branch has the finished app, made automatically on every push. Don't edit `gh-pages` by hand.
 
 ### Notes for future changes
 - **Everything is one `Item` with a `type`.** A new section later = a new type. Old data does not need converting.
