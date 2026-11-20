@@ -187,8 +187,19 @@ button { cursor: pointer; touch-action: manipulation; }
   font-size: 16px; line-height: 1.45;
 }
 .textarea { resize: vertical; min-height: 96px; }
-/* date/time boxes must shrink to their column and keep their height when empty (iPhone) */
-.input[type="date"], .input[type="time"] { min-width: 0; min-height: 48px; display: block; }
+/* date/time: box look on the wrapper, plain input inside (see DateTimeInput) */
+.dt-box { display: flex; align-items: center; min-width: 0; min-height: 48px; padding-top: 0; padding-bottom: 0; overflow: hidden; }
+.dt-box:focus-within { border-color: var(--accent); }
+.dt {
+  -webkit-appearance: none; appearance: none;
+  flex: 1 1 auto; width: 100%; min-width: 0; max-width: 100%;
+  margin: 0; padding: 0; border: 0; background: transparent; color: inherit;
+  font: inherit; font-size: 16px; line-height: 1.45; min-height: 46px; outline: none;
+}
+.dt::-webkit-date-and-time-value { text-align: left; min-height: 1.45em; }
+.dt::-webkit-datetime-edit { padding: 0; }
+/* three times in a row: wrap to two lines on very narrow phones */
+.grid-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 10px; }
 .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--accent); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span { font-size: 12px; color: var(--muted); }
@@ -235,13 +246,16 @@ button { cursor: pointer; touch-action: manipulation; }
   animation: fadein .2s ease both;
 }
 .sheet {
-  width: 100%; max-width: 640px; max-height: calc(var(--vv-h, 100dvh) - 12px); overflow-y: auto; overscroll-behavior: contain;
+  width: 100%; max-width: 640px; max-height: calc(var(--vv-h, 100dvh) - 12px);
+  /* scrolls up and down only – never sideways, and no rubber-band gap at the top (iPhone) */
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: none; touch-action: pan-y;
   background: var(--paper); color: var(--ink);
   border-radius: 22px 22px 0 0;
   padding: 12px 20px calc(24px + var(--safe-bottom));
   display: flex; flex-direction: column; gap: 14px;
   animation: slideup .35s cubic-bezier(.2,.8,.2,1) both;
 }
+.sheet > * { min-width: 0; }
 .sheet.full { height: calc(var(--vv-h, 100dvh) - 12px); }
 @media (min-width: 900px) {
   .overlay { align-items: center; }

@@ -4,7 +4,7 @@ import { downloadICS } from '../lib/calendar'
 import { fmtDay, todayStr } from '../lib/dates'
 import { isDue, memoryStrength, onLearned, onRevised } from '../lib/srs'
 import { LEARN_KINDS, type Item, type LearnKind } from '../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpacesBar, SpaceSelect, StarButton, TopBar, useApp, useBusy } from '../components/ui'
 
 type Filter = 'all' | 'today' | 'revise' | 'important'
 const FILTERS: { id: Filter; label: string }[] = [
@@ -230,11 +230,11 @@ export function LearnSheet({ item, all, onClose }: { item: Item | null; all: Ite
       <div className="grid-2">
         <label className="field">
           <span>Plan for day</span>
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateTimeInput type="date" value={date} onChange={setDate} />
         </label>
         <label className="field">
           <span>Time</span>
-          <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          <DateTimeInput type="time" value={time} onChange={setTime} />
         </label>
       </div>
       <div className="grid-2">

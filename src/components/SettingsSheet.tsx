@@ -7,7 +7,7 @@ import { addDays, todayStr } from '../lib/dates'
 import { removeSampleData } from '../lib/seed'
 import { THEMES, type ThemeId } from '../lib/themes'
 import { askChoice, askConfirm, showAlert } from './dialogs'
-import { Icon, Sheet, useApp, useBusy } from './ui'
+import { DateTimeInput, Icon, Sheet, useApp, useBusy } from './ui'
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { settings, toast } = useApp()
@@ -156,18 +156,18 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       <hr className="divider" />
       <section className="stack" style={{ gap: 10 }}>
         <span className="label">Your day</span>
-        <div className="grid-3">
+        <div className="grid-times">
           <label className="field">
             <span>Morning</span>
-            <input className="input" type="time" value={settings.morningTime} onChange={(e) => e.target.value && saveSettings({ morningTime: e.target.value })} />
+            <DateTimeInput type="time" value={settings.morningTime} onChange={(v) => v && saveSettings({ morningTime: v })} />
           </label>
           <label className="field">
             <span>Revise</span>
-            <input className="input" type="time" value={settings.reviseTime} onChange={(e) => e.target.value && saveSettings({ reviseTime: e.target.value })} />
+            <DateTimeInput type="time" value={settings.reviseTime} onChange={(v) => v && saveSettings({ reviseTime: v })} />
           </label>
           <label className="field">
             <span>Evening</span>
-            <input className="input" type="time" value={settings.eveningTime} onChange={(e) => e.target.value && saveSettings({ eveningTime: e.target.value })} />
+            <DateTimeInput type="time" value={settings.eveningTime} onChange={(v) => v && saveSettings({ eveningTime: v })} />
           </label>
         </div>
       </section>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { addItem, defaultSpace, deleteItem, spaceName, updateItem, useItems } from '../../lib/actions'
 import { fmtDay } from '../../lib/dates'
 import type { Item } from '../../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, SpaceSelect, TopBar, useApp, useBusy } from '../../components/ui'
+import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpaceSelect, TopBar, useApp, useBusy } from '../../components/ui'
 
 // Aim = a big life direction. Goal = something concrete under an aim.
 // A goal's progress comes from the tasks linked to it (set "Part of a goal" on a task).
@@ -134,7 +134,7 @@ function GoalSheet({ edit, aims, onClose }: { edit: { item: Item | null; type: '
           </label>
           <label className="field">
             <span>Target date</span>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateTimeInput type="date" value={date} onChange={setDate} />
           </label>
         </div>
       )}

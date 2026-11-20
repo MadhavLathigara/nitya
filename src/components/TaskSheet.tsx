@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { deleteItem, updateItem, useItems } from '../lib/actions'
 import { downloadICS } from '../lib/calendar'
 import type { Item } from '../lib/types'
-import { confirmDelete, Icon, Sheet, SpaceSelect, StarButton, useApp } from './ui'
+import { confirmDelete, DateTimeInput, Icon, Sheet, SpaceSelect, StarButton, useApp } from './ui'
 
 export function TaskSheet({ item, onClose }: { item: Item; onClose: () => void }) {
   const { toast } = useApp()
@@ -47,11 +47,11 @@ export function TaskSheet({ item, onClose }: { item: Item; onClose: () => void }
         <div className="grid-2">
           <label className="field">
             <span>Day</span>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateTimeInput type="date" value={date} onChange={setDate} />
           </label>
           <label className="field">
             <span>Time (shows on timeline)</span>
-            <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <DateTimeInput type="time" value={time} onChange={setTime} />
           </label>
         </div>
       )}

@@ -24,6 +24,17 @@ export function useBusy(): [boolean, (fn: () => Promise<unknown> | unknown) => P
   return [busy, run]
 }
 
+// Date / time box. The border and padding sit on a wrapper, not on the input itself:
+// iPhone Safari makes padded date/time inputs too wide (WebKit bug 301648, still in iOS 26.5),
+// which pushed pop-ups sideways. The wrapper also clips anything that is still too wide.
+export function DateTimeInput({ type, value, onChange, label }: { type: 'date' | 'time'; value: string; onChange: (v: string) => void; label?: string }) {
+  return (
+    <div className="input dt-box">
+      <input className="dt" type={type} value={value} aria-label={label} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+}
+
 // ---------- App context ----------
 export type Tab = 'today' | 'learn' | 'ideas' | 'notes' | 'quotes' | 'more'
 export interface CaptureDefaults { type?: string; text?: string; date?: string }
