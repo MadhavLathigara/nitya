@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CaptureSheet } from './components/Capture'
 import { SettingsSheet } from './components/SettingsSheet'
 import { Dialogs } from './components/dialogs'
-import { AppCtx, Icon, type AppCtxValue, type CaptureDefaults, type Tab } from './components/ui'
+import { AppCtx, type AppCtxValue, type CaptureDefaults, type FabAction, Icon, type Tab } from './components/ui'
 import { useSettings } from './lib/actions'
 import { seedIfNeeded } from './lib/seed'
 import { applyTheme, TAB_COLORS, type ThemeId } from './lib/themes'
@@ -31,6 +31,7 @@ export default function App() {
   const [sub, setSub] = useState<string | null>(null)
   const [navKey, setNavKey] = useState(0) // bumps on every tab tap, so tapping a tab always opens its main page
   const [capture, setCapture] = useState<CaptureDefaults | null>(null)
+  const [fab, setFab] = useState<FabAction | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [toastMsg, setToastMsg] = useState<{ text: string; key: number } | null>(null)
 
@@ -77,6 +78,7 @@ export default function App() {
             setSub,
             openCapture: (d?: CaptureDefaults) => setCapture(d ?? {}),
             openSettings: () => setShowSettings(true),
+            setFab,
           }
         : null,
     [settings, toast, go, sub],
@@ -106,7 +108,7 @@ export default function App() {
         ))}
       </nav>
 
-      <button type="button" className="fab" aria-label="New entry" onClick={() => setCapture({})}>
+      <button type="button" className="fab" aria-label={fab?.label ?? 'New entry'} title={fab?.label ?? 'New entry'} onClick={() => (fab ? fab.run() : setCapture({}))}>
         <Icon name="plus" size={22} stroke={2} />
       </button>
 

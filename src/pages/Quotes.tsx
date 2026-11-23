@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { addItem, defaultSpace, deleteItem, quoteOfDay, updateItem, useItems } from '../lib/actions'
 import type { Item } from '../lib/types'
-import { AUTO_FOCUS, confirmDelete, Icon, Sheet, StarButton, TopBar, useApp, useBusy } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, Icon, Sheet, StarButton, TopBar, useApp, useBusy, useFab } from '../components/ui'
 
 export function Quotes() {
   const items = useItems('quote')
@@ -9,6 +9,7 @@ export function Quotes() {
   const [tag, setTag] = useState('All')
   const [onlyFav, setOnlyFav] = useState(false)
   const [edit, setEdit] = useState<Item | 'new' | null>(null)
+  useFab('Add quote', () => setEdit('new'))
 
   const all = (items ?? []).slice().sort((a, b) => b.createdAt - a.createdAt)
   const tags = Array.from(new Set(all.flatMap((x) => x.tags ?? []))).sort()

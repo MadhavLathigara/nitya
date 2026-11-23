@@ -37,7 +37,9 @@ export function DateTimeInput({ type, value, onChange, label }: { type: 'date' |
 
 // ---------- App context ----------
 export type Tab = 'today' | 'learn' | 'ideas' | 'notes' | 'quotes' | 'more'
-export interface CaptureDefaults { type?: string; text?: string; date?: string }
+// lock: the type is already known (e.g. + on the Tasks screen), so the "Save as" choice is hidden
+export interface CaptureDefaults { type?: string; text?: string; date?: string; lock?: boolean }
+export interface FabAction { id: number; label: string; run: () => void }
 export interface AppCtxValue {
   settings: Settings
   toast: (msg: string) => void
@@ -46,12 +48,28 @@ export interface AppCtxValue {
   setSub: (s: string | null) => void
   openCapture: (d?: CaptureDefaults) => void
   openSettings: () => void
+  setFab: (f: FabAction | null | ((cur: FabAction | null) => FabAction | null)) => void
 }
 export const AppCtx = createContext<AppCtxValue | null>(null)
 export function useApp() {
   const v = useContext(AppCtx)
   if (!v) throw new Error('AppCtx missing')
   return v
+}
+
+// The + button belongs to the screen you are on. A screen calls useFab('New note', fn)
+// and + then makes that kind of item straight away. Screens that don't call it
+// (Today, the More menu…) keep the general "New entry" pop-up with its "Save as" choice.
+let fabIds = 0
+export function useFab(label: string, run: () => void) {
+  const { setFab } = useApp()
+  const latest = useRef(run)
+  latest.current = run
+  useEffect(() => {
+    const id = ++fabIds
+    setFab({ id, label, run: () => latest.current() })
+    return () => setFab((cur) => (cur?.id === id ? null : cur))
+  }, [label, setFab])
 }
 
 // ---------- Icons (simple line icons) ----------

@@ -1,7 +1,7 @@
 import { deleteItem, updateItem, useItems } from '../../lib/actions'
 import { fmtAgo, todayStr } from '../../lib/dates'
 import type { Item, ItemType } from '../../lib/types'
-import { Icon, TopBar, useApp } from '../../components/ui'
+import { Icon, TopBar, useApp, useFab } from '../../components/ui'
 
 const MOVES: { type: ItemType; label: string }[] = [
   { type: 'task', label: 'Task' },
@@ -12,7 +12,8 @@ const MOVES: { type: ItemType; label: string }[] = [
 ]
 
 export function Inbox({ onBack }: { onBack: () => void }) {
-  const { toast, settings } = useApp()
+  const { toast, settings, openCapture } = useApp()
+  useFab('Add to Inbox', () => openCapture({ type: 'inbox', lock: true }))
   const items = useItems('inbox')
   const list = (items ?? []).slice().sort((a, b) => b.createdAt - a.createdAt)
 

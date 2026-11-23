@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { addItem, defaultSpace, deleteItem, spaceName, updateItem, useItems } from '../../lib/actions'
 import { fmtDay } from '../../lib/dates'
 import type { Item } from '../../lib/types'
-import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpaceSelect, TopBar, useApp, useBusy } from '../../components/ui'
+import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpaceSelect, TopBar, useApp, useBusy, useFab } from '../../components/ui'
 
 // Aim = a big life direction. Goal = something concrete under an aim.
 // A goal's progress comes from the tasks linked to it (set "Part of a goal" on a task).
@@ -10,6 +10,7 @@ export function Goals({ onBack }: { onBack: () => void }) {
   const { settings } = useApp()
   const items = useItems()
   const [edit, setEdit] = useState<{ item: Item | null; type: 'aim' | 'goal'; parentId?: string } | null>(null)
+  useFab('Add goal', () => setEdit({ item: null, type: 'goal' }))
   const all = items ?? []
   const aims = all.filter((i) => i.type === 'aim').sort((a, b) => a.createdAt - b.createdAt)
   const goals = all.filter((i) => i.type === 'goal')

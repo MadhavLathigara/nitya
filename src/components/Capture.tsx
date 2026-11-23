@@ -13,6 +13,8 @@ const TYPES: { id: ItemType; label: string; target: string }[] = [
   { id: 'quote', label: 'Quote', target: 'Quotes' },
 ]
 
+const LOCKED_TITLE: Partial<Record<ItemType, string>> = { inbox: 'Add to Inbox', task: 'New task', quote: 'Add quote', note: 'New note', idea: 'New idea', learn: 'Add to Learn' }
+
 export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults; onClose: () => void }) {
   const { settings, toast } = useApp()
   const [text, setText] = useState(defaults.text ?? '')
@@ -42,7 +44,7 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
   }
 
   return (
-    <Sheet title="New entry" onClose={onClose}>
+    <Sheet title={defaults.lock ? LOCKED_TITLE[type] ?? 'New entry' : 'New entry'} onClose={onClose}>
       <label className="field">
         <span>Write anything. You can sort it later.</span>
         <textarea
@@ -60,6 +62,7 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
           placeholder="e.g. Learn DMA on STM32"
         />
       </label>
+      {!defaults.lock && (
       <div className="stack" style={{ gap: 6 }}>
         <span className="small muted">Save as</span>
         <div className="row-flex wrap" style={{ gap: 6 }}>
@@ -70,6 +73,7 @@ export function CaptureSheet({ defaults, onClose }: { defaults: CaptureDefaults;
           ))}
         </div>
       </div>
+      )}
       {type === 'quote' && (
         <label className="field">
           <span>Who said it (optional)</span>

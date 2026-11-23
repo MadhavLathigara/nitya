@@ -4,7 +4,7 @@ import { db } from '../lib/db'
 import { fmtAgo } from '../lib/dates'
 import type { Item } from '../lib/types'
 import { askText } from '../components/dialogs'
-import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
+import { confirmDelete, Icon, SpacesBar, SpaceSelect, StarButton, TopBar, useApp, useBusy, useFab } from '../components/ui'
 
 // Notes work like iPhone Notes: folders, pinned notes, search, checklists.
 // Simple text markers keep notes portable (they export cleanly to Markdown):
@@ -18,6 +18,7 @@ export function Notes() {
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(sub)
   const [busy, run] = useBusy()
+  useFab('New note', () => newNote())
 
   const all = items ?? []
   const open = openId ? all.find((n) => n.id === openId) : null

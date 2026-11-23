@@ -3,13 +3,14 @@ import { addItem, defaultSpace, deleteItem, updateItem, useItems } from '../../l
 import { fmtAgo } from '../../lib/dates'
 import type { Item } from '../../lib/types'
 import { askConfirm, showAlert } from '../../components/dialogs'
-import { confirmDelete, Icon, Sheet, TopBar, useApp, useBusy } from '../../components/ui'
+import { confirmDelete, Icon, Sheet, TopBar, useApp, useBusy, useFab } from '../../components/ui'
 
 export function Diagrams({ onBack }: { onBack: () => void }) {
   const { toast, settings } = useApp()
   const items = useItems('diagram')
   const [view, setView] = useState<Item | null>(null)
   const [sketch, setSketch] = useState<{ item: Item | null } | null>(null)
+  useFab('New sketch', () => setSketch((cur) => cur ?? { item: null }))
   const fileRef = useRef<HTMLInputElement>(null)
   const list = (items ?? []).slice().sort((a, b) => b.updatedAt - a.updatedAt)
 

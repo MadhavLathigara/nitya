@@ -4,7 +4,7 @@ import { downloadICS } from '../lib/calendar'
 import { fmtDay, todayStr } from '../lib/dates'
 import { isDue, memoryStrength, onLearned, onRevised } from '../lib/srs'
 import { LEARN_KINDS, type Item, type LearnKind } from '../lib/types'
-import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpacesBar, SpaceSelect, StarButton, TopBar, useApp, useBusy } from '../components/ui'
+import { AUTO_FOCUS, confirmDelete, DateTimeInput, Icon, Sheet, SpacesBar, SpaceSelect, StarButton, TopBar, useApp, useBusy, useFab } from '../components/ui'
 
 type Filter = 'all' | 'today' | 'revise' | 'important'
 const FILTERS: { id: Filter; label: string }[] = [
@@ -25,6 +25,7 @@ export function Learn() {
   const today = todayStr()
   const openItem = openId && openId !== 'new' ? (items ?? []).find((i) => i.id === openId) : null
   const setOpen = (v: Item | 'new' | null) => setOpenId(v === null ? null : v === 'new' ? 'new' : v.id)
+  useFab('Add to Learn', () => setOpen('new'))
 
   const all = (items ?? []).filter((i) => inSpace(i, space))
   const dueCount = all.filter((i) => isDue(i, today)).length

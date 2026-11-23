@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addItem, defaultSpace, deleteItem, descendants, inSpace, spaceName, updateItem, useItems } from '../lib/actions'
 import { db } from '../lib/db'
 import { fmtAgo } from '../lib/dates'
 import { IDEA_STAGES, type Item } from '../lib/types'
-import { confirmDelete, Icon, SpaceSelect, SpacesBar, StarButton, TopBar, useApp, useBusy } from '../components/ui'
+import { confirmDelete, Icon, SpacesBar, SpaceSelect, StarButton, TopBar, useApp, useBusy, useFab } from '../components/ui'
 import { StageBar } from './Today'
 
 type Filter = 'active' | 'launched' | 'parked'
@@ -16,6 +16,12 @@ export function Ideas() {
   const [filter, setFilter] = useState<Filter>('active')
   const [openId, setOpenId] = useState<string | null>(sub)
   const [busy, run] = useBusy()
+  const newIdea = () =>
+    run(async () => {
+      const id = await addItem('idea', { title: NEW_IDEA, kind: 'idea', status: 'seed', space: defaultSpace(settings) })
+      setOpenId(id)
+    })
+  useFab('New idea', newIdea)
 
   const all = items ?? []
   const open = openId ? all.find((i) => i.id === openId) : null
@@ -34,12 +40,7 @@ export function Ideas() {
             type="button"
             className="btn dark"
             disabled={busy}
-            onClick={() =>
-              run(async () => {
-                const id = await addItem('idea', { title: NEW_IDEA, kind: 'idea', status: 'seed', space: defaultSpace(settings) })
-                setOpenId(id)
-              })
-            }
+            onClick={newIdea}
           >
             <Icon name="plus" size={16} /> New idea
           </button>
@@ -87,6 +88,8 @@ export function Ideas() {
   )
 }
 
+const detailsOpen = new Map<string, number>()
+
 function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: () => void }) {
   const { toast } = useApp()
   const features = all.filter((x) => x.parentId === idea.id).sort((a, b) => a.createdAt - b.createdAt)
@@ -94,11 +97,20 @@ function IdeaDetail({ idea, all, onBack }: { idea: Item; all: Item[]; onBack: ()
   const [busy, run] = useBusy()
 
   // Leaving an idea you just made and never touched removes it, so no empty "New idea" cards pile up.
-  async function back() {
-    const fresh = await db.items.get(idea.id)
-    if (fresh && fresh.title === NEW_IDEA && !fresh.body && !features.length && fresh.createdAt === fresh.updatedAt) await deleteItem(idea.id)
-    onBack()
-  }
+  // Runs however you leave: Back, a side tab, or + for another new idea.
+  useEffect(() => {
+    detailsOpen.set(idea.id, (detailsOpen.get(idea.id) ?? 0) + 1)
+    return () => {
+      detailsOpen.set(idea.id, (detailsOpen.get(idea.id) ?? 1) - 1)
+      setTimeout(async () => {
+        if (detailsOpen.get(idea.id)) return // opened again straight away (React dev mode)
+        const fresh = await db.items.get(idea.id)
+        const kids = await db.items.where('parentId').equals(idea.id).count()
+        if (fresh && fresh.title === NEW_IDEA && !fresh.body && !kids && fresh.createdAt === fresh.updatedAt) await deleteItem(idea.id)
+      }, 0)
+    }
+  }, [idea.id])
+  const back = onBack
 
   return (
     <>

@@ -4,10 +4,11 @@ import { addDays, fmtDay, fmtTime, todayStr } from '../../lib/dates'
 import type { Item } from '../../lib/types'
 import { TaskSheet } from '../../components/TaskSheet'
 import { TaskRow } from '../../components/TaskRow'
-import { SpacesBar, TopBar, useApp } from '../../components/ui'
+import { SpacesBar, TopBar, useApp, useFab } from '../../components/ui'
 
 export function Tasks({ onBack }: { onBack: () => void }) {
   const { settings, openCapture } = useApp()
+  useFab('New task', () => openCapture({ type: 'task', lock: true }))
   const items = useItems('task')
   const [space, setSpace] = useState(settings.activeSpace)
   const [edit, setEdit] = useState<Item | null>(null)
@@ -32,7 +33,7 @@ export function Tasks({ onBack }: { onBack: () => void }) {
         title="More"
         onBack={onBack}
         right={
-          <button type="button" className="btn dark" onClick={() => openCapture({ type: 'task' })}>
+          <button type="button" className="btn dark" onClick={() => openCapture({ type: 'task', lock: true })}>
             Add task
           </button>
         }

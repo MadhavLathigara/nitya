@@ -187,7 +187,7 @@ export function Today() {
           />
         ))}
         {!todayTasks.length && (
-          <button type="button" className="btn" style={{ alignSelf: 'flex-start', marginTop: 12 }} onClick={() => openCapture({ type: 'task' })}>
+          <button type="button" className="btn" style={{ alignSelf: 'flex-start', marginTop: 12 }} onClick={() => openCapture({ type: 'task', lock: true })}>
             Plan a task for today
           </button>
         )}
@@ -277,7 +277,7 @@ export function Today() {
             {quote.author && <span className="small muted">{quote.author}</span>}
           </>
         ) : (
-          <button type="button" className="btn" onClick={() => openCapture({ type: 'quote' })}>
+          <button type="button" className="btn" onClick={() => openCapture({ type: 'quote', lock: true })}>
             Save your first quote
           </button>
         )}
